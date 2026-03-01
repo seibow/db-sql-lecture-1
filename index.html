@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>データベースとSQL入門</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 32px;
+    background: #fff;
+    color: #37352f;
+    line-height: 1.8;
+  }
+  h1 { font-size: 2.2em; font-weight: 700; margin-bottom: 24px; }
+  h2 { font-size: 1.35em; font-weight: 700; margin-top: 0; margin-bottom: 0.6em; border-left: 4px solid #4B89DC; padding-left: 12px; }
+  h3 { font-size: 1.05em; font-weight: 700; margin-top: 1.4em; margin-bottom: 0.4em; }
+  p { margin: 0.5em 0 0.8em; }
+
+  .section-box { border: 1px solid #E0E4EA; border-radius: 10px; padding: 24px 28px; margin: 28px 0; background: #FAFBFC; }
+  .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .badge { background: #4B89DC; color: white; border-radius: 20px; padding: 3px 14px; font-size: 0.78em; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+  .badge.orange { background: #E8820C; }
+  .badge.green  { background: #27AE60; }
+  .badge.purple { background: #7B4FC9; }
+  .badge.red    { background: #D94040; }
+
+  .callout { border-radius: 7px; padding: 14px 18px; margin: 14px 0; font-size: 0.94em; }
+  .callout.info     { background: #EEF3FB; border-left: 4px solid #4B89DC; }
+  .callout.question { background: #FFF8EC; border-left: 4px solid #E8820C; }
+  .callout.tip      { background: #EDFAF2; border-left: 4px solid #27AE60; }
+  .callout.warn     { background: #FEF0F0; border-left: 4px solid #D94040; }
+
+  /* Toggle */
+  details { background: #F5F7FA; border: 1px solid #DDE2EA; border-radius: 7px; padding: 0; margin: 12px 0; }
+  summary { cursor: pointer; padding: 12px 16px; font-weight: 600; font-size: 0.94em; list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; }
+  summary::before { content: '▶'; font-size: 0.7em; color: #888; transition: transform 0.2s; flex-shrink: 0; }
+  details[open] summary::before { transform: rotate(90deg); }
+  .details-body { padding: 4px 18px 16px 36px; font-size: 0.92em; color: #444; border-top: 1px solid #DDE2EA; }
+  .details-body p { margin: 10px 0; }
+
+  /* Tables */
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 0.92em; }
+  th { background: #4B89DC; color: white; padding: 9px 14px; text-align: left; font-weight: 600; }
+  td { padding: 8px 14px; border-bottom: 1px solid #E4E8EE; vertical-align: top; }
+  tr:nth-child(even) td { background: #F5F7FA; }
+
+  /* ===== Annotated table (Section 1) ===== */
+  .annotated-wrap {
+    position: relative;
+    margin: 24px 8px 32px;
+  }
+  /* テーブル外枠ラベル */
+  .ann-table-label {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border: 2px solid #27AE60;
+    border-radius: 5px;
+    padding: 1px 14px;
+    font-size: 0.82em;
+    font-weight: 700;
+    color: #1A6640;
+    white-space: nowrap;
+    z-index: 2;
+  }
+  .ann-table-outer {
+    border: 2px solid #27AE60;
+    border-radius: 8px;
+    overflow: visible;
+    padding: 18px 16px 14px;
+    position: relative;
+  }
+  /* カラム強調 */
+  .col-highlight-wrap {
+    position: relative;
+    display: inline-block;
+  }
+  /* レコード強調用の行スタイル */
+  .record-row td {
+    background: transparent !important;
+  }
+  .record-row {
+    position: relative;
+  }
+
+  /* annotated inner table */
+  .ann-inner {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.91em;
+  }
+  .ann-inner th {
+    background: #4B89DC;
+    color: white;
+    padding: 8px 16px;
+    border: 1px solid #3A78CC;
+    text-align: center;
+    font-weight: 600;
+  }
+  .ann-inner td {
+    padding: 8px 16px;
+    border: 1px solid #C8D4E8;
+    text-align: center;
+    background: white;
+  }
+
+  /* カラム列（オレンジ囲み）*/
+  .ann-inner .col-orange {
+    border-left: 3px solid #E8820C !important;
+    border-right: 3px solid #E8820C !important;
+  }
+  .ann-inner thead .col-orange {
+    border-top: 3px solid #E8820C !important;
+    background: #FFF0DC;
+    color: #7A3A00;
+  }
+  .ann-inner tbody tr:last-child .col-orange {
+    border-bottom: 3px solid #E8820C !important;
+  }
+
+  /* レコード行（水色囲み）*/
+  .ann-inner .record-row td {
+    border-top: 3px solid #00AACC !important;
+    border-bottom: 3px solid #00AACC !important;
+    background: #EEF9FC !important;
+  }
+  .ann-inner .record-row td:first-child { border-left: 3px solid #00AACC !important; }
+  .ann-inner .record-row td:last-child  { border-right: 3px solid #00AACC !important; }
+
+  /* フィールド（ピンク囲み）*/
+  .ann-inner .field-cell {
+    border: 3px solid #E040A0 !important;
+    background: #FFF0F8 !important;
+  }
+  /* field overlaps record row */
+  .ann-inner .record-row .field-cell {
+    border: 3px solid #E040A0 !important;
+    background: #FFE0F2 !important;
+  }
+
+  /* ラベルたち */
+  .ann-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .ann-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 5px;
+  }
+  .ann-label-dot {
+    width: 14px; height: 14px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    border: 2px solid;
+  }
+  .lbl-col    { color: #7A3A00; background: #FFF0DC; }
+  .lbl-col .ann-label-dot    { background: #FFF0DC; border-color: #E8820C; }
+  .lbl-record { color: #00607A; background: #EEF9FC; }
+  .lbl-record .ann-label-dot { background: #EEF9FC; border-color: #00AACC; }
+  .lbl-field  { color: #8A006A; background: #FFF0F8; }
+  .lbl-field .ann-label-dot  { background: #FFF0F8; border-color: #E040A0; }
+
+  /* カラムラベル上部 */
+  .col-caption {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 4px;
+  }
+  .col-caption-box {
+    background: #FFF0DC;
+    border: 2px solid #E8820C;
+    border-bottom: none;
+    border-radius: 5px 5px 0 0;
+    padding: 1px 24px;
+    font-size: 0.8em;
+    font-weight: 700;
+    color: #7A3A00;
+  }
+
+  /* レコードラベル左 */
+  .record-label-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 4px;
+  }
+  .record-label-box {
+    background: #EEF9FC;
+    border: 2px solid #00AACC;
+    border-radius: 5px;
+    padding: 1px 10px;
+    font-size: 0.8em;
+    font-weight: 700;
+    color: #00607A;
+    white-space: nowrap;
+  }
+  .record-label-arrow {
+    color: #00AACC;
+    font-size: 1em;
+  }
+
+  /* compare cards (Section 1 広義DB) */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .compare-card { border: 1px solid #E0E4EA; border-radius: 8px; padding: 14px; text-align: center; background: white; }
+  .compare-card .icon { font-size: 2em; display: block; margin-bottom: 6px; }
+  .compare-card h4 { margin: 0 0 6px; font-size: 0.9em; }
+  .compare-card p  { margin: 0; font-size: 0.81em; color: #666; }
+
+  /* flow diagram (DBMS / SQL) */
+  .flow-diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    background: #F5F7FA;
+    border-radius: 10px;
+    padding: 24px 16px;
+    margin: 16px 0;
+  }
+  .flow-box {
+    border-radius: 8px;
+    padding: 12px 28px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.95em;
+    width: 280px;
+    border: 2px solid;
+  }
+  .flow-box.blue   { background: #E8F0FB; border-color: #4B89DC; color: #1A3A6A; }
+  .flow-box.green  { background: #EDFAF2; border-color: #27AE60; color: #1A4A2A; }
+  .flow-box.orange { background: #FFF8EC; border-color: #E8820C; color: #7A3A00; }
+  .flow-box .sub   { font-size: 0.78em; font-weight: 400; margin-top: 2px; }
+  .flow-arrow { color: #4B89DC; font-size: 1.6em; line-height: 1.2; margin: 2px 0; }
+  .flow-label { font-size: 0.78em; color: #888; margin: -2px 0 2px; }
+
+  /* PK/FK */
+  .pk { background: #FFD700; color: #333; border-radius: 3px; padding: 1px 6px; font-size: 0.78em; font-weight: 700; margin-right: 4px; }
+  .fk { background: #8DD8C0; color: #1A4A3A; border-radius: 3px; padding: 1px 6px; font-size: 0.78em; font-weight: 700; margin-right: 4px; }
+
+  .entity-grid { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin: 16px 0; }
+  .entity-card { border: 2px solid #4B89DC; border-radius: 8px; overflow: hidden; min-width: 170px; box-shadow: 0 2px 6px rgba(0,0,0,0.07); flex: 1; }
+  .entity-card-head { background: #4B89DC; color: white; padding: 7px 14px; font-weight: 700; font-size: 0.9em; text-align: center; }
+  .entity-card-row { padding: 6px 14px; border-bottom: 1px solid #E4E8EE; font-size: 0.88em; display: flex; align-items: center; }
+  .entity-card-row:last-child { border-bottom: none; }
+  .entity-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px 0; color: #888; font-size: 0.82em; min-width: 60px; text-align: center; }
+
+  /* Normalization */
+  .norm-before td { background: #FFF0F0 !important; }
+  .norm-after  td { background: #F0FFF6 !important; }
+  .norm-step { display: flex; align-items: center; gap: 10px; margin: 20px 0 4px; font-weight: 700; font-size: 0.95em; }
+  .step-circle { background: #4B89DC; color: white; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-size: 0.85em; flex-shrink: 0; }
+  .step-circle.green  { background: #27AE60; }
+  .step-circle.purple { background: #7B4FC9; }
+  .step-circle.red    { background: #D94040; }
+
+  /* Summary */
+  .summary-box { background: #EEF3FB; border: 1.5px solid #4B89DC; border-radius: 10px; padding: 22px 28px; }
+
+  /* TOC */
+  .toc { background: #F5F7FA; border-radius: 8px; padding: 16px 24px; margin: 20px 0; }
+  .toc-title { font-weight: 700; font-size: 0.92em; color: #555; margin-bottom: 10px; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc li { margin: 5px 0; font-size: 0.9em; color: #444; }
+
+  hr { border: none; border-top: 1px solid #E4E8EE; margin: 36px 0; }
+
+  @media (max-width: 620px) {
+    body { padding: 20px 14px; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .entity-grid  { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🗄️ データベースとSQL入門</h1>
+
+<div class="toc">
+  <div class="toc-title">📋 本資料の流れ</div>
+  <ol>
+    <li>データベースとは？</li>
+    <li>ファイル・Excelによる管理との違い</li>
+    <li>DBMSとは？</li>
+    <li>主キーと外部キー</li>
+    <li>正規化とは？</li>
+    <li>SQLとは？</li>
+    <li>まとめ</li>
+  </ol>
+</div>
+
+<hr>
+
+<!-- ======== Section 1 ======== -->
+<div class="section-box">
+  <div class="section-header">
+    <span class="badge orange">1</span>
+    <h2>データベースとは？</h2>
+  </div>
+
+  <div class="callout question">
+    💬 「データベース」と聞いて、どんなものを思い浮かべますか？
+  </div>
+
+  <details>
+    <summary>データベースとは</summary>
+    <div class="details-body">
+      <p>広い意味では、データを整理してまとめたものはすべて「データベース」と言えます。</p>
+
+      <div class="compare-grid" style="margin: 12px 0;">
+        <div class="compare-card">
+          <span class="icon">📚</span>
+          <h4>図書館の蔵書</h4>
+          <p>書名・著者・分類で整理された本の集合</p>
+        </div>
+        <div class="compare-card">
+          <span class="icon">📒</span>
+          <h4>アドレス帳</h4>
+          <p>名前・住所・電話番号が整理されたリスト</p>
+        </div>
+        <div class="compare-card">
+          <span class="icon">🛒</span>
+          <h4>ECサイトの商品情報</h4>
+          <p>商品名・価格・在庫数を管理するシステム</p>
+        </div>
+      </div>
+
+      <p>データベースにはいくつかの種類がありますが、現在もっとも広く使われているのが<strong>リレーショナルデータベース（RDB）</strong>です。データを<strong>テーブル（表）</strong>形式で管理し、表と表を「関係」で結ぶ仕組みです。</p>
+      <p>本講義では以降、「データベース（DB）」と言ったら<strong>RDBのこと</strong>を指します。</p>
+
+      <div class="callout info" style="margin-top: 10px;">
+        📌 本講義では「データベース（DB）」＝ <strong>リレーショナルデータベース（RDB）</strong> を指します。
+      </div>
+    </div>
+  </details>
+
+  <h3>📋 テーブルの見方</h3>
+  <p>RDBはデータを<strong>テーブル（表）</strong>として管理します。テーブルの構造を押さえましょう。</p>
+
+  <!--
+    アノテーションテーブル
+    列構成: 顧客ID | 氏名(カラム強調) | 都道府県 | 登録日
+    行: ヘッダ / 山田(row0) / 鈴木・レコード強調(row1) / 田中(row2)
+    フィールド: row2・登録日 (カラム・レコードと被らないセル)
+  -->
+  <div style="position:relative; margin: 24px 4px 16px; padding: 16px 14px 14px; border: 2px solid #27AE60; border-radius: 10px;">
+
+    <!-- テーブルラベル -->
+    <div style="position:absolute; top:-13px; left:50%; transform:translateX(-50%); background:white; border:2px solid #27AE60; border-radius:5px; padding:1px 16px; font-size:0.82em; font-weight:700; color:#1A6640; white-space:nowrap;">テーブル</div>
+
+    <!-- メインテーブル -->
+    <table style="border-collapse:collapse; width:100%; font-size:0.91em; margin:0;">
+      <thead>
+        <tr>
+          <th style="background:#4B89DC; color:white; padding:9px 14px; border:1px solid #3A78CC; text-align:center;">顧客ID</th>
+          <!-- カラム列ヘッダ：オレンジ枠のみ、ラベルなし -->
+          <th style="background:#FFF0DC; color:#7A3A00; padding:9px 14px; border-top:3px solid #E8820C; border-left:3px solid #E8820C; border-right:3px solid #E8820C; border-bottom:1px solid #E8820C; text-align:center; font-weight:700;">氏名</th>
+          <th style="background:#4B89DC; color:white; padding:9px 14px; border:1px solid #3A78CC; text-align:center;">都道府県</th>
+          <th style="background:#4B89DC; color:white; padding:9px 14px; border:1px solid #3A78CC; text-align:center;">登録日</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- row0: 山田 通常行 -->
+        <tr>
+          <td style="padding:9px 14px; border:1px solid #C8D4E8; text-align:center; background:white;">1001</td>
+          <td style="padding:9px 14px; border-left:3px solid #E8820C; border-right:3px solid #E8820C; border-top:1px solid #E8820C; border-bottom:1px solid #E8820C; text-align:center; background:#FFF8F0;">山田 太郎</td>
+          <td style="padding:9px 14px; border:1px solid #C8D4E8; text-align:center; background:white;">東京都</td>
+          <td style="padding:9px 14px; border:1px solid #C8D4E8; text-align:center; background:white;">2024-01-15</td>
+        </tr>
+        <!-- row1: 鈴木 レコード強調行（水色囲み） -->
+        <tr>
+          <td style="padding:9px 14px; border:1px solid #C8D4E8; border-top:3px solid #00AACC; border-bottom:3px solid #00AACC; border-left:3px solid #00AACC; text-align:center; background:#EEF9FC;">1002</td>
+          <!-- カラム×レコードが重なるセル：両方の枠色を混在させず、より目立つレコード色を優先 -->
+          <td style="padding:9px 14px; border-left:3px solid #E8820C; border-right:3px solid #E8820C; border-top:3px solid #00AACC; border-bottom:3px solid #00AACC; text-align:center; background:#E8F7F0;">鈴木 花子</td>
+          <td style="padding:9px 14px; border:1px solid #C8D4E8; border-top:3px solid #00AACC; border-bottom:3px solid #00AACC; text-align:center; background:#EEF9FC;">大阪府</td>
+          <td style="padding:9px 14px; border:1px solid #C8D4E8; border-top:3px solid #00AACC; border-bottom:3px solid #00AACC; border-right:3px solid #00AACC; text-align:center; background:#EEF9FC;">2024-02-03</td>
+        </tr>
+        <!-- row2: 田中 通常行。フィールド=「登録日」列（カラム・レコードと非重複） -->
+        <tr>
+          <td style="padding:9px 14px; border:1px solid #C8D4E8; text-align:center; background:white;">1003</td>
+          <td style="padding:9px 14px; border-left:3px solid #E8820C; border-right:3px solid #E8820C; border-top:1px solid #E8820C; border-bottom:3px solid #E8820C; text-align:center; background:#FFF8F0;">田中 一郎</td>
+          <td style="padding:9px 14px; border:1px solid #C8D4E8; text-align:center; background:white;">北海道</td>
+          <!-- フィールドセル（ピンク）：カラム列でもレコード行でもない。オレンジ枠（カラム）とピンク枠（フィールド）を両立するためoutlineでピンクを重ねる -->
+          <td style="padding:9px 14px; border-left:3px solid #E8820C; border-right:3px solid #E8820C; border-top:1px solid #E8820C; border-bottom:3px solid #E8820C; outline:3px solid #E040A0; outline-offset:-3px; text-align:center; background:#FFF4FC;">2024-03-22</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- 凡例ラベル行 -->
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; font-size:0.83em; font-weight:600;">
+      <span style="display:inline-flex; align-items:center; gap:6px; background:#FFF8F0; border:1.5px solid #E8820C; border-radius:5px; padding:3px 10px; color:#7A3A00;">
+        <span style="width:13px;height:13px;border-radius:2px;border:2px solid #E8820C;background:#FFF0DC;display:inline-block;"></span>
+        カラム（Column） ＝ データの種類を表す縦の項目
+      </span>
+      <span style="display:inline-flex; align-items:center; gap:6px; background:#EEF9FC; border:1.5px solid #00AACC; border-radius:5px; padding:3px 10px; color:#00607A;">
+        <span style="width:13px;height:13px;border-radius:2px;border:2px solid #00AACC;background:#EEF9FC;display:inline-block;"></span>
+        レコード / 行（Row） ＝ 1件分のデータ
+      </span>
+      <span style="display:inline-flex; align-items:center; gap:6px; background:#FFF0F8; border:1.5px solid #E040A0; border-radius:5px; padding:3px 10px; color:#8A006A;">
+        <span style="width:13px;height:13px;border-radius:2px;border:2px solid #E040A0;background:#FFF0F8;display:inline-block;"></span>
+        フィールド（Field） ＝ カラムとレコードの交点にある1つの値
+      </span>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- ======== Section 2 ======== -->
+<div class="section-box">
+  <div class="section-header">
+    <span class="badge orange">2</span>
+    <h2>ファイル・Excelによる管理との違い</h2>
+  </div>
+
+  <div class="callout question">
+    💬 データを管理するだけなら、Excelやファイルで十分ではないでしょうか？
+  </div>
+
+  <details>
+    <summary>ファイル・Excelとデータベースの違い</summary>
+    <div class="details-body">
+      <table>
+        <thead>
+          <tr><th>観点</th><th>Excelやファイル管理</th><th>データベース（RDB）</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>一元管理</strong></td>
+            <td>ファイルが分散しやすく、どれが最新か分からなくなります</td>
+            <td>データを1か所に集約して管理でき、常に最新の状態を保てます</td>
+          </tr>
+          <tr>
+            <td><strong>大量データへの対応</strong></td>
+            <td>数十万行を超えると動作が重くなり、クラッシュのリスクもあります</td>
+            <td>数百万・数億件のデータも安定して高速に処理できます</td>
+          </tr>
+          <tr>
+            <td><strong>データの独立性</strong></td>
+            <td>保存形式が変わると、利用するプログラムもすべて修正が必要になります</td>
+            <td>データの保存方法とアプリケーションを切り離して管理できます</td>
+          </tr>
+          <tr>
+            <td><strong>データ整合性</strong></td>
+            <td>入力ミスや重複、矛盾したデータが入っても検知できません</td>
+            <td>制約（ルール）を設定することで、不正なデータの登録をDBが防いでくれます</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</div>
+
+<hr>
+
+<!-- ======== Section 3 ======== -->
+<div class="section-box">
+  <div class="section-header">
+    <span class="badge">3</span>
+    <h2>DBMSとは？</h2>
+  </div>
+
+  <p>
+    データベースを実際に操作・管理するためのソフトウェアを <strong>DBMS（Database Management System）</strong> と呼びます。「データベース」と「DBMS」は別のものです。
+  </p>
+
+  <div class="flow-diagram">
+    <div class="flow-box blue">
+      🖥️ アプリケーション
+      <div class="sub">（Webサービス・業務システムなど）</div>
+    </div>
+    <div class="flow-arrow">⬇️</div>
+    <div class="flow-label">SQL 命令</div>
+    <div class="flow-box green">
+      ⚙️ DBMS
+      <div class="sub">（MySQL・PostgreSQL など）</div>
+    </div>
+    <div class="flow-arrow">⬇️</div>
+    <div class="flow-label">データの読み書き</div>
+    <div class="flow-box orange">
+      🗄️ データベース
+      <div class="sub">（実際のデータが格納されている場所）</div>
+    </div>
+  </div>
+
+  <h3>主な DBMS 製品</h3>
+  <table>
+    <thead><tr><th>製品名</th><th>特徴</th><th>主な用途</th></tr></thead>
+    <tbody>
+      <tr><td>MySQL</td><td>無償・高速・世界シェアトップクラス</td><td>Webサービス全般</td></tr>
+      <tr><td>PostgreSQL</td><td>高機能・拡張性が高くオープンソース</td><td>業務システム・クラウド</td></tr>
+      <tr><td>SQL Server</td><td>Microsoft製・Windows環境と親和性が高い</td><td>企業の基幹システム</td></tr>
+      <tr><td>Oracle Database</td><td>高信頼・大規模商用システム向け</td><td>金融・官公庁・大企業</td></tr>
+      <tr><td>SQLite</td><td>軽量・ファイル1つで動作</td><td>モバイルアプリ・開発学習用</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<hr>
+
+<!-- ======== Section 4 ======== -->
+<div class="section-box">
+  <div class="section-header">
+    <span class="badge purple">4</span>
+    <h2>主キーと外部キー</h2>
+  </div>
+
+  <h3>🔑 主キー（Primary Key / PK）</h3>
+  <p>テーブル内の <strong>各レコードを一意に識別する</strong> 列のことです。</p>
+  <ul>
+    <li>同じ値が2件以上存在してはいけません（一意性）</li>
+    <li>空（NULL）にしてはいけません（必須性）</li>
+  </ul>
+
+  <div class="callout question">
+    💬 「氏名や都道府県を主キーにしてはいけない理由は何でしょうか？」
+  </div>
+
+  <details>
+    <summary>主キーにできない理由</summary>
+    <div class="details-body">
+      <p>氏名は同名の人が複数いる可能性があります。都道府県は47種類しかないため、明らかに重複します。主キーには<strong>絶対に重複しない値</strong>を割り当てる必要があります。そのため、システムが自動採番する「ID」を使うのが一般的です。</p>
+    </div>
+  </details>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="background:#9A7D0A;">🔑 顧客ID（PK）</th>
+        <th>氏名</th>
+        <th>都道府県</th>
+        <th>登録日</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="background:#FFF5CC; font-weight:700;">1001</td>
+        <td>山田 太郎</td><td>東京都</td><td>2024-01-15</td>
+      </tr>
+      <tr>
+        <td style="background:#FFF5CC; font-weight:700;">1002</td>
+        <td>鈴木 花子</td><td>大阪府</td><td>2024-02-03</td>
+      </tr>
+      <tr>
+        <td style="background:#FFF5CC; font-weight:700;">1003</td>
+        <td>田中 一郎</td><td>北海道</td><td>2024-03-22</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.88em; color:#555; margin-top:4px;">「顧客ID = 1001」と指定すれば、山田太郎さんのレコードを必ず一意に特定できます。</p>
+
+  <h3>🔗 外部キー（Foreign Key / FK）</h3>
+  <p><strong>別のテーブルの主キーを参照する列</strong>のことです。これによってテーブル同士の「関係（リレーション）」を表現します。</p>
+
+  <div class="entity-grid">
+    <div class="entity-card">
+      <div class="entity-card-head">顧客テーブル</div>
+      <div class="entity-card-row"><span class="pk">PK</span>顧客ID</div>
+      <div class="entity-card-row">氏名</div>
+      <div class="entity-card-row">都道府県</div>
+      <div class="entity-card-row">登録日</div>
+    </div>
+    <div class="entity-arrow">
+      <div style="font-size:1.6em; color:#4B89DC;">→</div>
+      <div style="font-size:0.78em; color:#888; margin-top:4px;">顧客IDを<br>参照する</div>
+    </div>
+    <div class="entity-card">
+      <div class="entity-card-head">注文履歴テーブル</div>
+      <div class="entity-card-row"><span class="pk">PK</span>注文ID</div>
+      <div class="entity-card-row"><span class="fk">FK</span>顧客ID</div>
+      <div class="entity-card-row">注文日</div>
+      <div class="entity-card-row">商品名</div>
+      <div class="entity-card-row">金額</div>
+    </div>
+  </div>
+
+  <table style="margin-top:8px;">
+    <thead>
+      <tr>
+        <th style="background:#27AE60;">注文ID（PK）</th>
+        <th style="background:#9A7D0A;">顧客ID（FK）</th>
+        <th>注文日</th><th>商品名</th><th>金額</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>5001</td>
+        <td style="background:#FFF5CC; font-weight:700;">1001</td>
+        <td>2024-05-10</td><td>ノートPC</td><td>¥80,000</td>
+      </tr>
+      <tr>
+        <td>5002</td>
+        <td style="background:#FFF5CC; font-weight:700;">1002</td>
+        <td>2024-05-11</td><td>キーボード</td><td>¥12,000</td>
+      </tr>
+      <tr>
+        <td>5003</td>
+        <td style="background:#FFF5CC; font-weight:700;">1001</td>
+        <td>2024-05-15</td><td>マウス</td><td>¥3,500</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout info" style="margin-top:12px;">
+    📌 注文履歴テーブルの「顧客ID」は顧客テーブルの主キーを参照しています。これにより「注文5001は山田太郎（1001）の注文」と紐付けられます。また、<strong>存在しない顧客IDを持つ注文は登録できない</strong>よう、DBが整合性を守ってくれます。
+  </div>
+</div>
+
+<hr>
+
+<!-- ======== Section 5 ======== -->
+<div class="section-box">
+  <div class="section-header">
+    <span class="badge red">5</span>
+    <h2>正規化とは？</h2>
+  </div>
+
+  <p>正規化とは、<strong>データの重複や矛盾を排除するためにテーブルを整理・分割するプロセス</strong>です。「1つの事実は1か所に」が基本原則です。</p>
+
+  <div class="norm-step">
+    <div class="step-circle red">前</div>
+    正規化前（問題のあるテーブル）
+  </div>
+  <table>
+    <thead><tr><th>注文ID</th><th>顧客名</th><th>注文商品（複数）</th><th>金額（複数）</th></tr></thead>
+    <tbody>
+      <tr class="norm-before">
+        <td>5001</td><td>山田 太郎</td><td>ノートPC, マウス</td><td>¥80,000, ¥3,500</td>
+      </tr>
+      <tr class="norm-before">
+        <td>5002</td><td>鈴木 花子</td><td>キーボード</td><td>¥12,000</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="callout warn">
+    ⚠️ 1つのセルに「ノートPC, マウス」と複数の値が入っています。「マウスだけ注文した人を検索する」といった操作が非常に困難になります。
+  </div>
+
+  <div class="norm-step">
+    <div class="step-circle">1</div>
+    第1正規化：1つのカラムには1つの値だけを入れる
+  </div>
+  <p style="font-size:0.92em; color:#555; margin-bottom:6px;">1セルに複数の値が入っている場合は、行を分割して1件ずつにします。</p>
+  <table>
+    <thead><tr><th>注文ID</th><th>顧客名</th><th>注文商品</th><th>金額</th></tr></thead>
+    <tbody>
+      <tr class="norm-after"><td>5001</td><td>山田 太郎</td><td>ノートPC</td><td>¥80,000</td></tr>
+      <tr class="norm-after"><td>5001</td><td>山田 太郎</td><td>マウス</td><td>¥3,500</td></tr>
+      <tr class="norm-after"><td>5002</td><td>鈴木 花子</td><td>キーボード</td><td>¥12,000</td></tr>
+    </tbody>
+  </table>
+  <div class="callout warn">
+    ⚠️ 行を分けたことで「山田太郎」という値が2行に重複しました。山田さんの名前を変更する場合、<strong>全行を探して修正</strong>しなければならず、修正漏れが起きやすくなります。
+  </div>
+
+  <div class="norm-step">
+    <div class="step-circle green">2</div>
+    第2正規化：主キーだけで決まる情報は別テーブルに分ける
+  </div>
+  <p style="font-size:0.92em; color:#555; margin-bottom:6px;">「顧客名」は注文商品に関係なく<strong>顧客IDだけで決まる</strong>情報です。注文テーブルから切り出して顧客テーブルに移します。</p>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+    <div>
+      <p style="font-size:0.85em; font-weight:700; margin:0 0 4px;">顧客テーブル</p>
+      <table>
+        <thead><tr><th>顧客ID（PK）</th><th>顧客名</th></tr></thead>
+        <tbody>
+          <tr class="norm-after"><td>C01</td><td>山田 太郎</td></tr>
+          <tr class="norm-after"><td>C02</td><td>鈴木 花子</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <p style="font-size:0.85em; font-weight:700; margin:0 0 4px;">注文テーブル</p>
+      <table>
+        <thead><tr><th>注文ID（PK）</th><th>顧客ID（FK）</th><th>商品</th><th>金額</th></tr></thead>
+        <tbody>
+          <tr class="norm-after"><td>5001-A</td><td>C01</td><td>ノートPC</td><td>¥80,000</td></tr>
+          <tr class="norm-after"><td>5001-B</td><td>C01</td><td>マウス</td><td>¥3,500</td></tr>
+          <tr class="norm-after"><td>5002-A</td><td>C02</td><td>キーボード</td><td>¥12,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="callout warn" style="margin-top:10px;">
+    ⚠️ 注文テーブルに「商品」と「金額」が並んでいますが、<strong>金額は商品だけで決まる</strong>情報です（どの注文でもノートPCは¥80,000）。これも分離する必要があります。
+  </div>
+
+  <div class="norm-step">
+    <div class="step-circle purple">3</div>
+    第3正規化：主キー以外の項目に依存する情報を別テーブルに分ける
+  </div>
+  <p style="font-size:0.92em; color:#555; margin-bottom:6px;">「金額」は主キー（注文ID）ではなく「商品」に依存しています。商品テーブルとして切り出します。</p>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+    <div>
+      <p style="font-size:0.85em; font-weight:700; margin:0 0 4px;">顧客テーブル</p>
+      <table>
+        <thead><tr><th>顧客ID</th><th>顧客名</th></tr></thead>
+        <tbody>
+          <tr class="norm-after"><td>C01</td><td>山田 太郎</td></tr>
+          <tr class="norm-after"><td>C02</td><td>鈴木 花子</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <p style="font-size:0.85em; font-weight:700; margin:0 0 4px;">注文テーブル</p>
+      <table>
+        <thead><tr><th>注文ID</th><th>顧客ID</th><th>商品ID</th></tr></thead>
+        <tbody>
+          <tr class="norm-after"><td>5001-A</td><td>C01</td><td>P01</td></tr>
+          <tr class="norm-after"><td>5001-B</td><td>C01</td><td>P02</td></tr>
+          <tr class="norm-after"><td>5002-A</td><td>C02</td><td>P03</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <p style="font-size:0.85em; font-weight:700; margin:0 0 4px;">商品テーブル</p>
+      <table>
+        <thead><tr><th>商品ID</th><th>商品名</th><th>金額</th></tr></thead>
+        <tbody>
+          <tr class="norm-after"><td>P01</td><td>ノートPC</td><td>¥80,000</td></tr>
+          <tr class="norm-after"><td>P02</td><td>マウス</td><td>¥3,500</td></tr>
+          <tr class="norm-after"><td>P03</td><td>キーボード</td><td>¥12,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout tip" style="margin-top:12px;">
+    ✅ 各テーブルの情報がきれいに分離されました。商品の価格が変わっても商品テーブルの1行を直すだけでOKです。「1つの事実を1か所に」が実現されています。
+  </div>
+  <div class="callout info">
+    📌 正規化は「第3正規形まで対応できていれば実務上は十分」と言われることが多いです。設計の際に意識する基本的な考え方として覚えておきましょう。
+  </div>
+</div>
+
+<hr>
+
+<!-- ======== Section 6 ======== -->
+<div class="section-box">
+  <div class="section-header">
+    <span class="badge green">6</span>
+    <h2>SQLとは？</h2>
+  </div>
+
+  <div class="callout question">
+    💬 DBMSに対してデータベースを操作するには、どうやって「命令」を伝えるのでしょうか？
+  </div>
+
+  <details>
+    <summary>SQLとクエリについて</summary>
+    <div class="details-body">
+      <p>人間がDBMSに命令を伝えるための<strong>専用の言語</strong>が必要です。それがSQLです。英語の命令文に近い構造を持っており、「どのデータを」「どうしたいか」を記述します。</p>
+      <p>そのSQLで書いた命令文のことを<strong>クエリ（Query）</strong>と呼びます。「問い合わせ」という意味の英単語です。現場では「このクエリ重いね」「クエリ投げてみて」のように日常的に使われます。</p>
+    </div>
+  </details>
+
+  <h3>SQL とは</h3>
+  <p>
+    <strong>SQL（Structured Query Language / 構造化問い合わせ言語）</strong> は、DBMSを通じてデータベースを操作するための<strong>命令言語</strong>です。
+  </p>
+
+  <div class="flow-diagram">
+    <div class="flow-box blue">
+      🖥️ アプリケーション
+      <div class="sub">（Webサービス・業務システムなど）</div>
+    </div>
+    <div class="flow-arrow">⬇️</div>
+    <div class="flow-label">SQL（クエリ）で命令を書く</div>
+    <div class="flow-box green">
+      ⚙️ DBMS
+      <div class="sub">（MySQL・PostgreSQL など）</div>
+    </div>
+    <div class="flow-arrow">⬇️</div>
+    <div class="flow-label">命令を解釈してデータを操作する</div>
+    <div class="flow-box orange">
+      🗄️ データベース
+      <div class="sub">（実際のデータが格納されている場所）</div>
+    </div>
+  </div>
+
+  <h3>SQLでできること（4つの基本操作）</h3>
+  <table>
+    <thead><tr><th>操作</th><th>SQL文</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td><strong>取得（読み取り）</strong></td><td>SELECT</td><td>データを検索・取り出す</td></tr>
+      <tr><td><strong>登録（追加）</strong></td><td>INSERT</td><td>新しいデータを追加する</td></tr>
+      <tr><td><strong>更新</strong></td><td>UPDATE</td><td>既存のデータを変更する</td></tr>
+      <tr><td><strong>削除</strong></td><td>DELETE</td><td>データを削除する</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout tip">
+    ✅ 具体的なSQLの書き方は次回の講義で学びます。今日はまず「SQLとはDBMSへの命令言語である」というイメージをしっかり持っておきましょう。
+  </div>
+</div>
+
+<hr>
+
+<!-- ======== Summary ======== -->
+<div class="summary-box">
+  <div class="section-header" style="margin-bottom:16px;">
+    <span class="badge" style="background:#37352f;">7</span>
+    <h2 style="margin:0; border-left:4px solid #37352f; padding-left:12px;">まとめ</h2>
+  </div>
+  <div class="callout info" style="font-size:1.05em; text-align:center; font-weight:700; padding:16px; margin-bottom:16px;">
+    SQL とは、DBMS を通じてデータベース（RDB）を操作できる命令言語である。
+  </div>
+  <table>
+    <thead><tr><th>キーワード</th><th>一言まとめ</th></tr></thead>
+    <tbody>
+      <tr><td>データベース（RDB）</td><td>テーブル形式でデータを管理し、表同士を関係で結ぶ仕組み</td></tr>
+      <tr><td>カラム / レコード（行）/ フィールド</td><td>データの種類（縦）／ 1件分のデータ（横）／ その交点の値</td></tr>
+      <tr><td>DBMS</td><td>データベースを管理・操作するソフトウェア（MySQL・PostgreSQLなど）</td></tr>
+      <tr><td>主キー（PK）</td><td>レコードを一意に識別するための列</td></tr>
+      <tr><td>外部キー（FK）</td><td>別テーブルの主キーを参照してテーブル間の関係を表す列</td></tr>
+      <tr><td>正規化</td><td>データの重複・矛盾をなくすためにテーブルを設計・分割するプロセス</td></tr>
+      <tr><td>SQL / クエリ</td><td>DBMSへの命令言語 ／ その命令文のこと</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>
